@@ -34,6 +34,10 @@ def PartitionDisEq(partition_matrix, partition):
 
     (n_rows, n_col) = partition_matrix.shape
 
+    if n_col < 2:
+        print 'Cannot calculate disequilibrium for the single column ', partition
+        return -1
+
     freq0 = 0.0
     freq1 = 0.0
     freq_check = 0.0
@@ -84,9 +88,18 @@ def PartitionDisEq(partition_matrix, partition):
     #assert (n_complete_rows*freq1)-derived_allele_prod == (n_complete_rows*freq0)-anc_allele_prod, 'Mismatch between two ways of calculating LD'
 
     assert (freq0 + freq1 <= n_complete_rows), 'Frequencies add up to more than 1!'
-    x = (n_complete_rows*freq1-derived_allele_prod)
-    y = (n_complete_rows*freq0-anc_allele_prod)
-    u = n_complete_rows**2-derived_allele_prod-anc_allele_prod
+
+    # The following three lines are in error. 
+    #   x = (n_complete_rows*freq1-derived_allele_prod)
+    #   y = (n_complete_rows*freq0-anc_allele_prod)
+    #   u = n_complete_rows**2-derived_allele_prod-anc_allele_prod
+    # end erroneous code
+
+    # The erroneous lines are being replaced with the following lines
+    x = ((n_complete_rows**(n_col-1))*freq1-derived_allele_prod)
+    y = ((n_complete_rows**(n_col-1))*freq0-anc_allele_prod)
+    u = (n_complete_rows**n_col)-derived_allele_prod-anc_allele_prod
+    # end replacement code
 
     if (x+y == u == 0):
         z = 1
