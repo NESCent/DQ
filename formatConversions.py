@@ -50,6 +50,8 @@ def Standardize(h, missingdata_dict = {'#$%^': -1}):
 
     std_h = zeros(h.shape)
 
+    biallelic_columns = []
+    non_biallelic_columns = []
     for r in range(0, n_col):
         col = h[0:n_rows, r]
         #print col
@@ -57,10 +59,21 @@ def Standardize(h, missingdata_dict = {'#$%^': -1}):
         
         #print "UNIQUE = ", r, unique_items
         #print col
+        
+        #if (std_missingdata_token in set(col)):
+        #    assert len(unique_items) == 3, "Data not bi-allelic?" 
+        #else:
+        #    assert len(unique_items) == 2, "Data not bi-allelic?" 
+
         if (std_missingdata_token in set(col)):
-            assert len(unique_items) == 3, "Data not bi-allelic?" 
+            if len(unique_items) != 3:
+                non_biallelic_columns.append(r)
+                continue
         else:
-            assert len(unique_items) == 2, "Data not bi-allelic?" 
+            if len(unique_items) != 2:
+                non_biallelic_columns.append(r)
+                continue
+        biallelic_columns.append(r)
 
         dic = {}
         dic[std_missingdata_token] = std_missingdata_token
@@ -74,6 +87,11 @@ def Standardize(h, missingdata_dict = {'#$%^': -1}):
         std_col = [dic[item] for item in col]            
         std_h[0:n_rows, r] = std_col
 
+    # At this point the non-biallelic columns, if any, would be all zeros. We now
+    # filter out any such rows.
+    if (len(non_biallelic_columns) > 0):
+        print "Non-SNP columns: ", non_biallelic_columns
+        std_h = std_h[0:n_rows, biallelic_columns]
     return std_h
                     
 
