@@ -141,7 +141,7 @@ print 'Two-locus disequilibria in matrix form?', is_allpairs
 
 
 # read the data matrix from a file.
-# non_std matrix is  2-D numpy array, but the datatype is *NOT INT*
+# non_std_mat is  2-D numpy array, but the datatype is *NOT INT*
 nonstd_mat = ReadFromTxt(haplotype_file_name)
 
 # make 0 and 1 the two allelic types; after replacing the
