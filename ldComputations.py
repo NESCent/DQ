@@ -31,6 +31,89 @@ def BitArray(d, n_bits):
 ############################
 
 def PartitionDisEq(partition_matrix, partition):
+    """
+    Computes a multi-locus disequilibrium measure for a given matrix
+    (partition_matrix).
+
+    The diseq. is computed is E, as defined at the bottom of page 2 in
+    Dpca.pdf
+
+    Input parameters
+    ----------------
+
+    partition_matrix        a primarily 0-1 *numpy* matrix, with -1 also being used to
+                                            =======
+                            denoted missing data. ***Note: partition_matrix
+                            is treated as a haplotype matrix would be.
+                            Specifically, PartitionDisEq does not treat
+                            successive rows as representing the
+                            maternally-derived and paternal-derived
+                            chromosomes of a diploid zygote.***
+    
+    partition               well, partition_matrix is usually a sub-matrix
+                            of some matrix in the calling function that has
+                            the same number of rows as the original matrix,
+                            but whose columns are a subset of the columns
+                            of the original matrix. partition is a list the
+                            columns of the original matrix that
+                            partition_matrix represents. For example, if
+                            partition = [1, 4, 9, 13], it means
+                            partition_matrix contains columns 1, 4, 9, 13
+                            (in that order) of the original matrix in the 
+                            calling function.
+
+    Return value
+    ------------
+
+    Let H[M, N] be the input M x N matrix. PartitionDisEq disregards any
+    rows that contain a -1 (missing data). So let H[Q, N] be the 0-1 matrix
+    with no missing data, where Q is the number of rows with no missing
+    data.
+
+    Then, PartitionDisEq's calculations are:
+
+    number_of_ones[i]           number of 1 alleles in column i, i in {0, 1, 2, ..., N-1}
+    fraction_ones[i]            number_of_ones[i]/Q
+    number_of_zeros[i]          Q-number_of_ones[i]
+    fraction_zeros[i]           number_of_zeros[i]/Q = 1-fraction_ones[i]
+
+    product_of_fractions_ones   fraction_ones.prod()  [In practice this may
+                                                       be better calculated as
+                                                       number_of_ones.prod()/Q**N,
+                                                       to avoid floating
+                                                       point complications.]
+    
+    product_of_fractions_zeros  fraction_zeros.prod() [similar remark applies]
+    
+    indicator_all_one_row[]     indicator_all_one_row[i] = 1 if row_i is
+                                all ones, and zero otherwise.
+    indicator_all_zero_row[]    indicator_all_zero_row[i] = 1 if row_i is
+                                all zeros, and zero otherwise.
+
+
+    row_diseq[]                 row_diseq[i] is calculated as:
+
+    indicator_all_zero_row[i] + indicator_all_one_row[i] - product_of_fractions_zeros - product_of_fractions_ones
+    -------------------------------------------------------------------------------------------------------------
+                    1 - product_of_fractions_ones - product_of_fractions_zeros
+
+
+    matrix_diseq               row_diseq.sum()/Q
+
+    The return value is matrix_diseq
+
+    Details
+    -------
+
+    The earlier version of PartitionDisEq calculated the same final return
+    value, but ordered the computations differently. But the new way of
+    organizing (specifically, calculating matrix_diseq as
+    row_diseq.sum()/Q) has the advantage that it can be used without
+    modification to calculate Marcy's individual haplotype scores (1. See
+    Section 2, Dpca.pdf. 2. Marcy also defines similar individual zygote
+    scores, but PartitionDisEq cannot be used to calculate the zygote
+    scores, except the ID disequilibrium.)
+    """
 
     (n_rows, n_col) = partition_matrix.shape
 
@@ -38,88 +121,40 @@ def PartitionDisEq(partition_matrix, partition):
         print 'Cannot calculate disequilibrium for the single column ', partition
         return -1
 
-    freq0 = 0.0
-    freq1 = 0.0
-    freq_check = 0.0
-    n_complete_rows = 0
-    
-    #one for each locus 
-    derived_allele_freq = zeros(n_col) 
-    #one for each locus 
-    anc_allele_freq = zeros(n_col)
+    # disregard rows with -1 (missing data)
+    matrix_without_missing_data = filter(lambda row: -1 not in row, partition_matrix)
+    # the statement above returns a normal list of numpy arrays. The following
+    # statement typecasts the normal list into a numpy array,
+    # like partition_matrix is. Note that we are not modifying
+    # partition_matrix here at all.
+    matrix_without_missing_data = array(matrix_without_missing_data)
 
-    for r in range(0, n_rows):
-        row = partition_matrix[r]
-        if -1 in row:
-            continue
+    (n_rows, n_cols) = matrix_without_missing_data.shape
 
-        n_complete_rows += 1
+    # each row in matrix_without_missing_data.transpose() is a column n
+    # matrix_without_missing_data. Also note: calling the transpose
+    # method of the array object does not modify the object itself.
+    # also, we would like number_of_ones and number_of_zeros to be numpy
+    # arrays.
+    number_of_ones = array([column.sum() for column in matrix_without_missing_data.transpose()])
+    # n_rows - number_of_ones = [n_rows-x for x in number_of_ones]
+    number_of_zeros = n_rows - number_of_ones
 
-        #print row
-        s = row.sum()
+    product_of_fractions_ones  = float(number_of_ones.prod())/(n_rows**n_cols)
+    product_of_fractions_zeros = float(number_of_zeros.prod())/(n_rows**n_cols)
 
-        #numpy allows such cool matrix additions. it even understands
-        #1-row!
+    indicator_all_one_row = [0 not in row for row in matrix_without_missing_data] 
+    indicator_all_zero_row = [1 not in row for row in matrix_without_missing_data] 
 
-        derived_allele_freq += row
-        #1-row is row bit flipped!
-        anc_allele_freq += 1-row
+    # defining a local function
+    def local_fn_row_diseq(j):
+        nr = indicator_all_zero_row[j] + indicator_all_one_row[j] - product_of_fractions_zeros - product_of_fractions_ones
+        dr = 1 - product_of_fractions_ones - product_of_fractions_zeros
+        return nr/dr
+    row_diseq = [local_fn_row_diseq(j) for j in range(0, n_rows)]
+    matrix_diseq = sum(row_diseq)/n_rows
 
-        if s == n_col:
-            #all ones
-            freq1 += 1
-        elif s == 0:
-            #all zeros
-            freq0 += 1
-        else:
-            #check sum
-            freq_check += 1
-
-    derived_allele_sum = derived_allele_freq.sum()
-    derived_allele_prod = derived_allele_freq.prod()
-    anc_allele_prod = anc_allele_freq.prod()
-
-    assert (freq0+freq_check+freq1 == n_complete_rows)
-
-    #The following two asserts must hold *ONLY FOR* the 2-Locus case. That
-    #is, *ONLY WHEN PARTITION_MATRIX HAS 2 Columns*
-
-    #assert (freq_check+2*freq1 == derived_allele_sum), "Frequencies don't add up!"
-    #assert (n_complete_rows*freq1)-derived_allele_prod == (n_complete_rows*freq0)-anc_allele_prod, 'Mismatch between two ways of calculating LD'
-
-    assert (freq0 + freq1 <= n_complete_rows), 'Frequencies add up to more than 1!'
-
-    # The following three lines are in error. 
-    #   x = (n_complete_rows*freq1-derived_allele_prod)
-    #   y = (n_complete_rows*freq0-anc_allele_prod)
-    #   u = n_complete_rows**2-derived_allele_prod-anc_allele_prod
-    # end erroneous code
-
-    # The erroneous lines are being replaced with the following lines
-    x = ((n_complete_rows**(n_col-1))*freq1-derived_allele_prod)
-    y = ((n_complete_rows**(n_col-1))*freq0-anc_allele_prod)
-    u = (n_complete_rows**n_col)-derived_allele_prod-anc_allele_prod
-    # end replacement code
-
-    if (x+y == u == 0):
-        z = 1
-        print "Something fishy among columns ", partition, ". Probably the \
-        columns are all ancestral or all descendant allele types?"
-    else:
-        z = (x+y)/u
-
-    #print n_complete_rows, freq0, freq1, derived_allele_prod, anc_allele_prod
-    #print x, y, x+y, u
-    assert (z <= 1 or (x+y < 0 and u < 0)) 
-
-    #print '-------------'
-    #print n_complete_rows, derived_allele_freq, anc_allele_freq, derived_allele_prod, anc_allele_prod 
-    #print freq0, freq1, freq_check 
-    #print 'x = ', x, '\t y = ', y, '\t u = ', u, '\t z = ', z 
-    #print '-------------'
-
-    return z
-        
+    return matrix_diseq
 
 ############################
 ############################
