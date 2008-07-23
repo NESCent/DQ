@@ -132,7 +132,7 @@ def Standardize(h, missingdata_dict = {'#$%^': -1}):
 ############################
 ############################
 
-def Zygosity(genotype_mat, missingdata_token='#@$%'):
+def Heterozygosity(genotype_mat, missingdata_token='#@$%'):
     """Take a matrix with phased or unphased genotype information; 
     that is the first two
     rows is the  genotype of the first individual, the next two rows
@@ -183,6 +183,72 @@ def Zygosity(genotype_mat, missingdata_token='#@$%'):
         zygosity_matrix_transpose[r] = zygosity_col.copy()
 
     return zygosity_matrix_transpose.transpose()
+
+############################
+############################
+
+def AlleleOneHomozygosity(genotype_matrix)
+    """
+    Takes a 2*M x N matrix G of genotypes and constructs a M x N character
+    matrix Z, such that Z[i, j] = 1 if and only if the i^th zygote (rows
+    2*i and 2*i+1) in G is homozygous for allele 1 at site j: i.e., Z[i, j]
+    = 1 iff G[2*i, j] = G[2*i+1, j] = 1.
+
+    Input parameters
+    ----------------
+
+    genotype_matrix     A (mostly) 0-1 numpy matrix 
+                        (i.e., a numpy array of numpy arrays)
+                        with dimensions of the form 
+                        2*m x n, where m is interpreted as 
+                        the number of zygotes, and n the number of sites.
+                        
+                        Each pair of rows (2i, 2i+1) is interpreted to denote 
+                        a phased or unphased genotype. 
+
+                        Apart from 0s and 1s, the matrix may also contain
+                        -1 denoting missing data. 
+
+    Return value
+    ------------
+
+    allele_one_homozygosity     A numpy m x n matrix, such that 
+                                
+                                allele_one_homozygosity[i, j] = 1 if and
+                                only if genotype_matrix[2*i, j] =
+                                genotype_matrix[2*i+1, j] = 1 
+
+                                allele_one_homozygosity[i, j] = -1 if 
+                                genotype_matrix[2*i, j] = -1 or
+                                genotype_matrix[2*i+1, j] = -1.
+
+                                allele_one_homozygosity[i, j] = 0 in all
+                                other cases.
+    """
+
+    (n_rows, n_cols) = genotype_matrix.shape
+
+    assert n_rows%2 == 0, "Input Matrix Not Genotypes? There seems to be an odd \
+    number of rows."
+    
+    n_genotypes = n_rows/2
+
+    allele_one_homozygosity = zeros(n_genotypes, n_cols)
+    
+    for j in range(0, n_genotypes):
+        # kind of obscurantist coding. But I'll explain. 
+        #
+        # 'minimum' is a numpy function that makes element-by-element
+        # comparison of two vectors and puts the minimum of each comparsion
+        # into a vector. That is:
+        # allele_one_homozygosity[i] = min(genotype_matrix[2*j, i], current_zygote[2*j+1, i])
+        #
+        # Now, this is what we want allele_one_homozygosity to be, since
+        # min(1, 1) = 1, min(0, 1) = 0, and min(-1, 1) = min(-1, 0) = min(-1, -1) = -1.
+        allele_one_homozygosity[j] = minimum(genotype_matrix[2*j], genotype_matrix[2*j+1])
+    
+    return allele_one_homozygosity
+
 
 ############################
 ############################

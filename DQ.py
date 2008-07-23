@@ -155,7 +155,7 @@ else:
     haplotype_matrix = Standardize(nonstd_mat)
 
 if (idd_ld == 'idd'): 
-    data_matrix = Zygosity(haplotype_matrix)
+    data_matrix = Heterozygosity(haplotype_matrix)
 else:
     data_matrix = haplotype_matrix
 
