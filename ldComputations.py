@@ -30,6 +30,64 @@ def BitArray(d, n_bits):
 ############################
 ############################
 
+def FilterMissingData(m):
+    """
+    Returns a matrix without the rows in the input matrix m that contain
+    -1s
+
+    Input parameter
+    ---------------
+
+    m                       a primarily 0-1 *numpy* matrix, with -1 
+                                            =======
+                            missing data.
+
+    Return value
+    ------------
+
+    A 0-1 numpy matrix without the rows in m that contain -1s.
+
+    """
+
+    # filter rows with -1 (missing data) (note: this doesn't modify m)
+    matrix_without_missing_data = filter(lambda row: -1 not in row, m)
+    # the statement above returns a normal list of numpy arrays. The following
+    # statement typecasts the normal list into a numpy array of numpy
+    # arrays, like partition_matrix is. Note that we are not modifying
+    # partition_matrix here at all.
+    matrix_without_missing_data = array(matrix_without_missing_data)
+
+    return(matrix_without_missing_data)
+
+
+
+def AlleleOneSiteFrequencies(matrix):
+    """
+    Computes the allele-one frequency for each site (column) in matrix 
+    
+    Input parameters
+    ----------------
+
+    matrix                  a purely 0-1 *numpy* matrix
+                                         =======
+
+   
+    Return value
+    ------------
+
+    allele_one_site_frequencies[]       allele_one_site_frequencies[j] = number of ones in the
+                                        j-th column (counting from 0) of matrix.
+
+    """
+
+
+    # each row in matrix.transpose() is a column in
+    # matrix. note: calling the transpose
+    # method of the array object does not modify the object itself.
+    allele_one_site_frequencies = array([row.sum() for row in matrix_without_missing_data.transpose()])
+    return(allele_one_site_frequencies)
+
+
 def PartitionDisEq(partition_matrix, partition):
     """
     Computes a multi-locus disequilibrium measure for a given matrix
@@ -108,36 +166,43 @@ def PartitionDisEq(partition_matrix, partition):
     The earlier version of PartitionDisEq calculated the same final return
     value, but ordered the computations differently. But the new way of
     organizing (specifically, calculating matrix_diseq as
-    row_diseq.sum()/Q) has the advantage that it can be used without
-    modification to calculate Marcy's individual haplotype scores (1. See
-    Section 2, Dpca.pdf. 2. Marcy also defines similar individual zygote
-    scores, but PartitionDisEq cannot be used to calculate the zygote
-    scores, except the ID disequilibrium.)
+    row_diseq.sum()/Q) has the advantage that it cleanly expresses
+    matrix_diseq as the expected value of Marcy's individual haplotype
+    scores (see Section 2, Dpca.pdf) 
     """
 
-    (n_rows, n_col) = partition_matrix.shape
+    (n_rows, n_cols) = partition_matrix.shape
 
-    if n_col < 2:
+    if n_cols < 2:
         print 'Cannot calculate disequilibrium for the single column ', partition
         return -1
 
-    # disregard rows with -1 (missing data)
-    matrix_without_missing_data = filter(lambda row: -1 not in row, partition_matrix)
-    # the statement above returns a normal list of numpy arrays. The following
-    # statement typecasts the normal list into a numpy array,
-    # like partition_matrix is. Note that we are not modifying
-    # partition_matrix here at all.
-    matrix_without_missing_data = array(matrix_without_missing_data)
+    # BEGIN block comment
+    # # disregard rows with -1 (missing data)
+    # matrix_without_missing_data = filter(lambda row: -1 not in row, partition_matrix)
+    # # the statement above returns a normal list of numpy arrays. The following
+    # # statement typecasts the normal list into a numpy array of numpy
+    # # arrays, like partition_matrix is. Note that we are not modifying
+    # # partition_matrix here at all.
+    # matrix_without_missing_data = array(matrix_without_missing_data)
+    # 
+    # END block comment
 
+    matrix_without_missing_data = FilterMissingData(partition_matrix)
     (n_rows, n_cols) = matrix_without_missing_data.shape
+    number_of_ones = AlleleOneSiteFrequencies(matrix_without_missing_data)
 
-    # each row in matrix_without_missing_data.transpose() is a column n
-    # matrix_without_missing_data. Also note: calling the transpose
-    # method of the array object does not modify the object itself.
-    # also, we would like number_of_ones and number_of_zeros to be numpy
-    # arrays.
-    number_of_ones = array([column.sum() for column in matrix_without_missing_data.transpose()])
+    # BEGIN block comment
+    # # each row in matrix_without_missing_data.transpose() is a column n
+    # # matrix_without_missing_data. Also note: calling the transpose
+    # # method of the array object does not modify the object itself.
+    # # also, we would like number_of_ones and number_of_zeros to be numpy
+    # # arrays.
+    # number_of_ones = array([column.sum() for column in matrix_without_missing_data.transpose()])
     # n_rows - number_of_ones = [n_rows-x for x in number_of_ones]
+    # 
+    # END block comment
+
     number_of_zeros = n_rows - number_of_ones
 
     product_of_fractions_ones  = float(number_of_ones.prod())/(n_rows**n_cols)
