@@ -17,6 +17,13 @@ import re
 #Ganesh's modules
 from ldComputations import *
 
+def PadNone(y):
+    for item in y:
+        yield item
+    while True:
+        yield None
+
+
 def RandomIndices(n, k):
     """ return k unique indices at random from range(0, n): i.e., [0, n-1]
     (both included) """
@@ -167,6 +174,36 @@ def AllPartitionsGivenLevel(n, level):
     while True:
         yield None
 
+def AllPartitions(level):
+    """
+    iterator, returns the lists [0, 0, ...., 1] through [1, 1, ..., 1] (of
+    length level) one by one, and then keeps returning None. 
+
+    Input parameter
+    ---------------
+
+    level       level should be a positive integer. 
+
+    Yielded values
+    --------------
+
+    if level is a positive integer, the k-th yield, for 1 <= k <= 2**level - 1
+    is a 0-1 list of length level which contains the binary representation
+    of k. For example, if level = 3 the 4-th yield (k = 4) is [1, 0, 0].
+    For k >= 2**level, None is yielded.
+
+    if level is an integer <= 0, the first 2**level - 1 yields are all [],
+    after which None is yielded.
+
+    if level is not an integer, the results are not unpredictable and not
+    guaranteed.
+    """
+
+    for j in range(1, 2**level):
+        p = [(j >> i) % 2 for i in range(level-1, -1, -1)]
+        yield p
+    while True:
+        yield None
     
 
 def AllPairsOfLoci(n):

@@ -20,17 +20,9 @@ from formatConversions import *
 from levelDistancePartition import *
 from fileWrite import *
 
-def PadNone(y):
-    for item in y:
-        yield item
-    while True:
-        yield None
-
 def IsOption(s):
     """does string s start with a - ? like -Hap"""
     return s[0] == '-'
-
-
 
 
 #this option *must* be provided by the user
@@ -113,10 +105,11 @@ while not(arg == None):
 
     if (arg == '-help'):
         arg = arguments.next()
-        usage = """Usage: python FixedDiseq.py < parameters >
+        usage = """Usage: python DQ.py < parameters >
                                             
                                                Parameters (parameters in [] optional)
                                                --------------------------------------
+                                               -help
                                                -hapfile < haplotype matrix file >
                                                -missingdata < missingdata token > -output < output file > 
                                                -allpairs <yes/no> 

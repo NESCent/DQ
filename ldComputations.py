@@ -13,8 +13,155 @@ import re
 #python extensions
 from numpy import * 
 
+import levelDistancePartition
+
 ############################
 ############################
+
+def PerHaplotypeScoresVector(haplotype, number_of_ones, number_of_haplotypes):
+    """
+    Compute and return the vector of disequilibrium scores for the given haplotype.
+
+    If the haplotype is of length N, the vector is of length 2**N - 1.
+
+    Input parameters
+    ----------------
+
+    haplotype                       is a 1-dimensional 0-1 numpy array,
+                                    
+    number_of_ones                  is a 1-dimensional numpy array. 
+                                    number_of_ones[j] is
+                                    the number of type 1 alleles in the
+                                    sample at site j (counting from 0)
+
+    number_of_haplotypes            number of haplotypes in the sample from
+                                    which the input came.
+
+    Return value
+    ------------
+
+    A vector row_scores[0:2**N-1] (where N is the length of the input haplotype), such that 
+    row_scores[j] is the multilocus disequilibrium computed for the partition of haplotype 
+    represented by the binary representation of j+1. 
+    For example, let N = 4,
+    and j = 5. Then, row_scores[j] is the multilocus disequilibrium of the
+    partition of haplotype specified by [0, 1, 1, 0] i.e., of the partition
+    [haplotype[1], haplotype[2]]. So in this example, row_scores[5] is the
+    individual haplotype version of the traditional 2-locus linkage
+    disequilibrium between sites 1 & 2.
+
+    To see how a multilocus disequilibrium score is computed for a given
+    partition of a single haplotype, see function HaplotypePartitionScore
+    """
+
+    n_cols = len(haplotype)
+    if n_cols < 2:
+        print 'Cannot calculate disequilibria for a single column ', partition
+        return -1
+
+    row_scores = []
+    all_partitions = levelDistancePartition.AllPartitions(n_cols)
+    partition = all_partitions.next()
+    while not partition == None:
+        print partition
+        score = HaplotypePartitionScore(haplotype, number_of_ones, number_of_haplotypes, partition)
+        row_scores.append(score)
+        partition = all_partitions.next()
+    return row_scores    
+
+
+def HaplotypePartitionScore(haplotype, number_of_ones, number_of_haplotypes, partition):
+    """
+    Compute the multi-locus disequilibrium score for a specified
+    haplotype partition.
+    
+
+    Input parameters
+    ----------------
+
+    haplotype                       is a 1-dimensional 0-1 numpy array,
+                                    
+    number_of_ones                  is a 1-dimensional numpy array. 
+                                    number_of_ones[j] is
+                                    the number of type 1 alleles in the
+                                    sample at site j (counting from 0)
+
+    partition                       is a 0-1, 1-dimensional, non-numpy, array 
+                                    representing a selection of sites or
+                                    columns.
+
+    number_of_haplotypes            number of haplotypes in the sample from
+                                    which the input came.
+
+    Return value & Details
+    ----------------------
+
+    returns the multi-locus disequilibrium calculated for the specified haplotype partition. 
+    The detailed calculations are below, where the return value is denoted row_diseq.
+                                                   =================================
+
+    Let:
+
+    1. haplotype = h[0:N] (i.e., an array of length N, remembering that 0:n = {0, 1, 2, ..., N-1}
+    2. partition = p[0:N] 
+    3. number_of_haplotypes = Q
+
+    Then, HaplotypePartitionScore's calculations are:
+
+    partitioned_haplotype[]                 [h[j] such that partition[j] == 1] (just those
+                                            sites j for which partition[j] == 1)
+
+    partitioned_number_of_ones[]            [number_of_ones[j] for j where partition[j] == 1]
+
+    partitioned_number_of_zeros[]           Q-partitioned_number_of_ones
+                                            (subtract each element of partitioned_number_of_ones
+                                            from Q)
+
+    product_of_fractions_ones               partitioned_number_of_ones.prod()/(Q**N)
+                                            [= Product_{j from 0 through N-1} number_of_ones[j]*partition[j]/Q]
+
+    product_of_fractions_zeros              partitioned_number_of_zeros.prod()/(Q**N)
+                                            [= Product_{j from 0 through N-1} number_of_zeros[j]*partition[j]/Q]
+
+    indicator_all_ones                      = 1, if partitioned_haplotype is made of all ones.
+                                            = 0, otherwise
+
+    indicator_all_zeros                     = 1, if partitioned_haplotype is made of all zeros.
+                                            = 0, otherwise
+
+    row_diseq                               row_diseq is calculated as:                                            
+
+    indicator_all_zeros + indicator_all_ones - product_of_fractions_zeros - product_of_fractions_ones
+    -------------------------------------------------------------------------------------------------
+                    1 - product_of_fractions_ones - product_of_fractions_zeros
+                                            
+    """
+
+    n_sites = len(haplotype)
+
+    # get a list of sites represented in partition.
+    sites_in_partition = filter(lambda j: partition[j] == 1, range(0, n_sites))
+            
+    # partitioned_haplotype contains just those elements of haplotype whose
+    # indices are in sites_in_partition. And then array() typecasts it as a
+    # numpy array.
+    partitioned_haplotype = array(haplotype[sites_in_partition])
+
+    partitioned_number_of_ones = array(number_of_ones[sites_in_partition]) 
+    partitioned_number_of_zeros = number_of_haplotypes - partitioned_number_of_ones
+
+    product_of_fractions_ones = float(partitioned_number_of_ones.prod())/(number_of_haplotypes**n_sites)
+    product_of_fractions_zeros = float(partitioned_number_of_zeros.prod())/(number_of_haplotypes**n_sites)
+
+    indicator_all_ones = (0 not in partitioned_haplotype)
+    indicator_all_zeros = (1 not in partitioned_haplotype)
+
+    nr = indicator_all_zeros + indicator_all_ones - product_of_fractions_zeros - product_of_fractions_ones
+    dr = 1 - product_of_fractions_ones - product_of_fractions_zeros
+
+    row_diseq = nr/dr
+    return row_diseq
+
 
 def BitArray(d, n_bits):
     """Puts the n-bit binary representation of positive integer d in a
@@ -84,7 +231,7 @@ def AlleleOneSiteFrequencies(matrix):
     # each row in matrix.transpose() is a column in
     # matrix. note: calling the transpose
     # method of the array object does not modify the object itself.
-    allele_one_site_frequencies = array([row.sum() for row in matrix_without_missing_data.transpose()])
+    allele_one_site_frequencies = array([row.sum() for row in matrix.transpose()])
     return(allele_one_site_frequencies)
 
 
@@ -177,46 +324,35 @@ def PartitionDisEq(partition_matrix, partition):
         print 'Cannot calculate disequilibrium for the single column ', partition
         return -1
 
-    # BEGIN block comment
-    # # disregard rows with -1 (missing data)
-    # matrix_without_missing_data = filter(lambda row: -1 not in row, partition_matrix)
-    # # the statement above returns a normal list of numpy arrays. The following
-    # # statement typecasts the normal list into a numpy array of numpy
-    # # arrays, like partition_matrix is. Note that we are not modifying
-    # # partition_matrix here at all.
-    # matrix_without_missing_data = array(matrix_without_missing_data)
-    # 
-    # END block comment
-
     matrix_without_missing_data = FilterMissingData(partition_matrix)
     (n_rows, n_cols) = matrix_without_missing_data.shape
     number_of_ones = AlleleOneSiteFrequencies(matrix_without_missing_data)
+    
+    # BEGIN block comments
+    #
+    # number_of_zeros = n_rows - number_of_ones
+    # product_of_fractions_ones  = float(number_of_ones.prod())/(n_rows**n_cols)
+    # product_of_fractions_zeros = float(number_of_zeros.prod())/(n_rows**n_cols)
 
-    # BEGIN block comment
-    # # each row in matrix_without_missing_data.transpose() is a column n
-    # # matrix_without_missing_data. Also note: calling the transpose
-    # # method of the array object does not modify the object itself.
-    # # also, we would like number_of_ones and number_of_zeros to be numpy
-    # # arrays.
-    # number_of_ones = array([column.sum() for column in matrix_without_missing_data.transpose()])
-    # n_rows - number_of_ones = [n_rows-x for x in number_of_ones]
-    # 
-    # END block comment
+    # indicator_all_one_row = [0 not in row for row in matrix_without_missing_data] 
+    # indicator_all_zero_row = [1 not in row for row in matrix_without_missing_data] 
+    #
+    # # defining a local function
+    # def local_fn_row_diseq(j):
+    #   nr = indicator_all_zero_row[j] + indicator_all_one_row[j] - product_of_fractions_zeros - product_of_fractions_ones
+    #   dr = 1 - product_of_fractions_ones - product_of_fractions_zeros
+    #   return nr/dr
+    # row_diseq = [local_fn_row_diseq(j) for j in range(0, n_rows)]
+    #
+    # END block comments
 
-    number_of_zeros = n_rows - number_of_ones
-
-    product_of_fractions_ones  = float(number_of_ones.prod())/(n_rows**n_cols)
-    product_of_fractions_zeros = float(number_of_zeros.prod())/(n_rows**n_cols)
-
-    indicator_all_one_row = [0 not in row for row in matrix_without_missing_data] 
-    indicator_all_zero_row = [1 not in row for row in matrix_without_missing_data] 
-
-    # defining a local function
-    def local_fn_row_diseq(j):
-        nr = indicator_all_zero_row[j] + indicator_all_one_row[j] - product_of_fractions_zeros - product_of_fractions_ones
-        dr = 1 - product_of_fractions_ones - product_of_fractions_zeros
-        return nr/dr
-    row_diseq = [local_fn_row_diseq(j) for j in range(0, n_rows)]
+    # PartitionDisEq's input is already partitioned, whereas
+    # HaplotypePartitionScore takes as input an unpartitioned haplotype,
+    # and also a takes in a vector specifying the partition. In order to
+    # use that HaplotypePartitionScore, I create the dummy_partition
+    # vector.
+    dummy_partition = [1 for k in range(0, n_cols)]
+    row_diseq = [HaplotypePartitionScore(matrix_without_missing_data[j], number_of_ones, n_rows, dummy_partition) for j in range(0, n_rows)]
     matrix_diseq = sum(row_diseq)/n_rows
 
     return matrix_diseq
@@ -279,62 +415,3 @@ def TwoLocusLD(haplotype_matrix):
 
 ############################
 ############################
-
-#def MultiLocusLD(haplotype_matrix):
-#    """H = set of loci; for each subset B of $2^H$ except the emptyset,
-#       calculate $f_{B, 1} and $f_{B, 0}$. $f_{B, 1}$ is the frequency of
-#       haplotypes that have all $1$s in the loci in the subset $B$. Likewise
-#       for $f_{B, 0}$. Then E_{B} for the set of loci B is calculated as 
-#       E_{B} = \frac{f_{B, 1} - \Pi_{j \in B} p_j + f_{B, 0} - \Pi_{j \in B} (1-p_j)}{1 - \Pi_{j \in B} p_j - \Pi_{j \in B} (1-p_j)}
-#
-#       General algorithm: say for $n (#genes) = 4$, apply masks from $0001$ to 
-#       $1111$ to the columns. Each mask represents a subset $B$. 
-#       The columns that are 1 in the mask are extracted,
-#       logically speaking; Then count the #rows whose masked sum = #ones in the
-#       mask. This would be $f_{B, 1}$. Similarly, calculate $f_{B, 0}. Also
-#       calculate p_j for each column in the partition. All this
-#       is implemented in PartitionDisEq.
-#
-#       Input: haplotype_matrix, an (k, n) 0-1 numpy array; each row represents the
-#       haplotype of an individual.
-#
-#       Output: a list of 2**n - 1 LD measures,  one for each
-#       non-empty subset of the n loci.
-#       """
-#
-#    (n_rows, n_col) = haplotype_matrix.shape
-##
-#    #E is a list with 2**n-1 items. E[i] will the LD for the loci extracted
-#    #out by the mask represented by i.
-#    E = []
-#
-#    #n_col = 10 PURELY FOR DEBUGGING PURPOSES
-#    #n_col = 10
-#    k = 1
-#    two_to_the_n_col = 2**n_col
-#    # had to use  while loop instead of for because the range function
-#    # failed with large numbers such as 2**n_col
-#    while k < two_to_the_n_col:
-#        print "analyzing partition", k, "of ", two_to_the_n_col
-#        #BitArray returns a numpy array
-#        mask = BitArray(k, n_col)
-#
-#        #mask_sum = # ones in the mask.
-#        mask_sum = mask.sum()
-#        if (mask_sum != 2):
-#            k = k+1
-#            continue
-#
-#        #partition contains the positions in the mask that are set to 1
-#        w = where(mask == 1)
-#        partition = w[0]
-#        partitioned_matrix = haplotype_matrix[0:n_rows, partition]
-#        z = PartitionDisEq(partitioned_matrix, partition)
-#        E.append((w, z))
-#        #E.append(z)
-#        k = k+1
-#            
-#    return E
-#
-#############################
-###############################

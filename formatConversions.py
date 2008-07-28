@@ -187,7 +187,7 @@ def Heterozygosity(genotype_mat, missingdata_token='#@$%'):
 ############################
 ############################
 
-def AlleleOneHomozygosity(genotype_matrix)
+def AlleleOneHomozygosity(genotype_matrix):
     """
     Takes a 2*M x N matrix G of genotypes and constructs a M x N character
     matrix Z, such that Z[i, j] = 1 if and only if the i^th zygote (rows
