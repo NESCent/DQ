@@ -150,8 +150,15 @@ def HaplotypePartitionScore(haplotype, number_of_ones, number_of_haplotypes, par
     partitioned_number_of_ones = array(number_of_ones[sites_in_partition]) 
     partitioned_number_of_zeros = number_of_haplotypes - partitioned_number_of_ones
 
-    product_of_fractions_ones = float(partitioned_number_of_ones.prod())/(number_of_haplotypes**n_sites)
-    product_of_fractions_zeros = float(partitioned_number_of_zeros.prod())/(number_of_haplotypes**n_sites)
+    #again, these are whole array operations
+    partitioned_fraction_of_ones = partitioned_number_of_ones/float(number_of_haplotypes)
+    partitioned_fraction_of_zeros = partitioned_number_of_zeros/float(number_of_haplotypes)
+
+    product_of_fractions_ones = partitioned_number_of_ones.prod()
+    product_of_fractions_zeros = partitioned_number_of_zeros.prod()
+    
+    #product_of_fractions_ones = float(partitioned_number_of_ones.prod())/(number_of_haplotypes**n_sites)
+    #product_of_fractions_zeros = float(partitioned_number_of_zeros.prod())/(number_of_haplotypes**n_sites)
 
     indicator_all_ones = (0 not in partitioned_haplotype)
     indicator_all_zeros = (1 not in partitioned_haplotype)

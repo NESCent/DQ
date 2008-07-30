@@ -199,8 +199,14 @@ def AllPartitions(level):
     guaranteed.
     """
 
-    for j in range(1, 2**level):
+#    for j in range(1, 2**level):
+#        p = [(j >> i) % 2 for i in range(level-1, -1, -1)]
+#        yield p
+    n = 2**level
+    j = 1
+    while j < 2**level:
         p = [(j >> i) % 2 for i in range(level-1, -1, -1)]
+        j += 1
         yield p
     while True:
         yield None
