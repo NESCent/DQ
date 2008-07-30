@@ -49,13 +49,21 @@ c. pca.py should be invoked as:
    -hapfile <haplotype matrix file>
    -missingdata <missingdata token> 
    -output <output file>
+   -random <a random integer j such that 0 <= j < number of sites in input matrix>
 
    For example: 
-   python pca.py -hapfile nomix1214.pop1.seq -output vectors_for_pca.test1.out
+   1. python pca.py -hapfile nomix1214.pop1.seq -output vectors_for_pca.test1.out
 
-   reads the haplotype matrix from the file nomix1214.pop1.seq and writes the
-   output in the file vectors_for_pca.test1.out
+       reads the haplotype matrix from the file nomix1214.pop1.seq and writes the
+       output in the file vectors_for_pca.test1.out
 
-   If a token other than -1 is used to denote missing data, then it
-   must be specified after the '-missingdata' argument. By default,
-   -1 is assumed to denote missing data.
+       If a token other than -1 is used to denote missing data, then it
+       must be specified after the '-missingdata' argument. By default,
+       -1 is assumed to denote missing data.
+
+   2. python pca.py -hapfile nomix1214.pop1.seq -output vectors_for_pca.test1.out -random 10
+
+        similar to one, but randomly samples 10 sites, and uses the sampled
+        sites as the haplotype matrix. In the new matrix, the sites appear
+        in the same order in which they appeared in the original matrix.
+        It also outputs which sites were sampled. 

@@ -63,7 +63,7 @@ def PerHaplotypeScoresVector(haplotype, number_of_ones, number_of_haplotypes):
     all_partitions = levelDistancePartition.AllPartitions(n_cols)
     partition = all_partitions.next()
     while not partition == None:
-        print partition
+        #print partition
         score = HaplotypePartitionScore(haplotype, number_of_ones, number_of_haplotypes, partition)
         row_scores.append(score)
         partition = all_partitions.next()
